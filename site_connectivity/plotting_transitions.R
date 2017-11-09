@@ -153,7 +153,7 @@ head(rec_ee3)
 # colour scale for number of transitions
 cscale = scale_colour_gradientn(colors=terrain.colors(10)[10:1], 
                                 breaks = 2 * c(0.15,1.5,15,150), 
-                                limits = 2 * c(0.03,160),
+                                limits = 2 * c(0.03,200),
                                 trans="log10",
                                 name = "Transitions")
 
@@ -188,13 +188,13 @@ fig_ss <- qmplot(Longitude, Latitude, data = receiver.location.all, geom="blank"
   geom_segment(data = rec_ee3, aes(x = site1long, y = site1lat,
                                    xend = site2long, yend = site2lat, 
                                    colour = count, size = count),
-               alpha=0.7) + 
+               alpha=0.7) + theme_bw(base_size = 20) +
   geom_point(data = receiver.location,aes(x = Longitude, y = Latitude, size = totalvis),
              colour = I("black"), shape = 1) +
   # scale_size_continuous(trans="log10",range=c(0.5,2.5),name="") + 
   cscale + sscale + guides(size = guide_legend(override.aes = list(linetype=0))) +
   geom_text(data = rec_to_text, aes(x=Longitude,y=Latitude,label=prevsite),size=3.5) +
-  annotate("text",x=18.38,y=-34.38,label="(a)~italic(Spring/Summer)",parse=TRUE)
+  annotate("text",x=18.41,y=-34.38,label="(a)~italic(Spring/Summer)",parse=TRUE)
 
 write.csv(rec_ee3,paste("site_connectivity/output/aggregate_transitions_",seas,".csv",sep=""))
 write.csv(receiver.location,paste("site_connectivity/output/aggregate_visits_",seas,".csv",sep=""))
@@ -330,7 +330,7 @@ head(rec_ee3)
 
 cscale = scale_colour_gradientn(colors=terrain.colors(10)[10:1], 
                                 breaks = 2 * c(0.15,1.5,15,150), 
-                                limits = 2 * c(0.03,160),
+                                limits = 2 * c(0.03,200),
                                 trans="log10",
                                 name = "Transitions")
 
@@ -378,16 +378,16 @@ fig_aw <- qmplot(Longitude, Latitude, data = receiver.location.all, geom="blank"
   geom_segment(data = rec_ee3, aes(x = site1long, y = site1lat,
                                    xend = site2long, yend = site2lat, 
                                    colour = count, size = count),
-               alpha=0.7) + 
+               alpha=0.7) + theme_bw(base_size = 20) +
   geom_point(data = receiver.location,aes(x = Longitude, y = Latitude, size = totalvis),
              colour = I("black"), shape = 1) +
   # scale_size_continuous(trans="log10",range=c(0.5,2.5),name="") + 
   cscale + sscale + guides(size = guide_legend(override.aes = list(linetype=0))) +
   geom_text(data = rec_to_text, aes(x=Longitude,y=Latitude,label=prevsite),size=3.5) +
-  annotate("text",x=18.38,y=-34.38,label="(b)~italic(Autumn/Winter)",parse=TRUE)
+  annotate("text",x=18.41,y=-34.38,label="(b)~italic(Autumn/Winter)",parse=TRUE)
 
 write.csv(rec_ee3,paste("site_connectivity/output/aggregate_transitions_",seas,".csv",sep=""))
 write.csv(receiver.location,paste("site_connectivity/output/aggregate_visits_",seas,".csv",sep=""))
 
 ggsave("site_connectivity/output/fig_network.png", 
-       arrangeGrob(fig_ss, fig_aw,ncol=1), width=8, height=12, dpi=300)
+       arrangeGrob(fig_ss, fig_aw,ncol=1), width=8, height=12, dpi=400)
