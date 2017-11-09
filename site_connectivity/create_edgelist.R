@@ -3,7 +3,11 @@
 # Theoni Photopoulou 20161210
 
 #setwd("/Users/theoniphotopoulou/Dropbox/RESEARCH/20160722_Sharks/Inshore_manuscript")
-setwd("/Users/iandurbach/Documents/Research/161208_AlisonMEPS")
+#setwd("/Users/iandurbach/Documents/Research/161208_AlisonMEPS")
+
+# !!! USER SETS DESIRED SEASON HERE !!!
+# either "autumnwinter", "springsummer", or "all
+season <- "springsummer"
 
 Sys.setenv(TZ='Africa/Johannesburg')
 
@@ -18,7 +22,7 @@ options(dplyr.print_max = 1e9)
 
 # input Stata file
 library(foreign)
-mydata <- read.dta("data_in_use.dta")
+mydata <- read.dta("data/data_in_use.dta")
 dim(mydata)
 str(mydata)
 head(mydata)
@@ -34,10 +38,13 @@ head(mdf)
 dim(mdf)
 
 # remove 439 observations at KBO between 10/2006 and 11/2007 (Alison deployment typo)
-mdf = filter(mdf,!(sitecode=="KBO" & ((year==2006 & month>=10)|(year==2007 & month<=11))))
+mdf <- filter(mdf,!(sitecode=="KBO" & ((year==2006 & month>=10)|(year==2007 & month<=11))))
 
 # remove 2004 and 2008 observations
-mdf = filter(mdf, year > 2004 & year < 2008)
+mdf <- filter(mdf, year > 2004 & year < 2008)
+
+# remove observations prior to May 2005
+mdf <- filter(mdf, !(year == 2005 & month < 5))
 
 ##### Notes on the raw data 20161212
 # 1. datetime is not a time object at this stage and it gives time in GMT, by the looks of it. it gives the time of each detection
@@ -70,9 +77,14 @@ y <- y[,c("shark_id","datetime","sitecode","season","month","year","hr","prevtim
 head(y)
 
 # seasonal filters
-#ss <- filter(y, season=="Spring" | season=="Summer")
-ss <- filter(y, season=="Autumn" | season=="Winter")
-#ss <- filter(y, season=="Summer")
+if (season == "autumnwinter") {
+  ss <- filter(y, season=="Autumn" | season=="Winter")
+} else if (season == "springsummer"){
+  ss <- filter(y, season=="Spring" | season=="Summer") 
+} else if (season == "all") {
+  ss <- y
+}
+
 ss <- droplevels(ss)
 table(ss$shark_id)
 y <- ss
@@ -118,8 +130,6 @@ res = y %>% group_by(sitecode,prevsite) %>% dplyr::summarise(count = n(),
                                                 wt = mean(abs(timediff)),
                                                 nprobs = sum(timediff==0))
 
-#write.csv(res,"zero-time-diffs.csv")
-
 # create transition matrix
 
 # not all sites appear in both prevsite and sitecode, so to get transition matrix to be
@@ -134,17 +144,19 @@ l2 = levels(re2$sitecode)
 
 oddonesout = c(setdiff(l1,l2),setdiff(l2,l1))
 
-extrabit = data.frame(prevsite = oddonesout, sitecode = oddonesout, 
-                      count = 0, wt = 0, nprobs = 0)
-re2 = rbind.data.frame(extrabit,re2)
+if(length(oddonesout) > 0){
+  extrabit = data.frame(prevsite = oddonesout, sitecode = oddonesout, 
+                        count = 0, wt = 0, nprobs = 0)
+  re2 = rbind.data.frame(extrabit,re2) 
+}
 
 transmat = dcast(re2, prevsite ~ sitecode, 
                  value.var = "count", drop=F, fill=0)
 
-write.csv(transmat,"receiver_transmat.csv")
+write.csv(transmat, paste0("site_connectivity/output/receiver_transmat_",season,".csv"))
 
 # remove self-transitions
 receiver_edgelist = re2
 receiver_edgelist = receiver_edgelist[receiver_edgelist$prevsite != receiver_edgelist$sitecode,]
 
-write.csv(receiver_edgelist,"receiver_edgelist_autumnwinter.csv")
+write.csv(receiver_edgelist, paste0("site_connectivity/output/receiver_edgelist_",season,".csv"))

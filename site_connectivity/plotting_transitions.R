@@ -3,12 +3,14 @@
 # ----
 # Inputs: receiver_edgelist_<season>.csv (see create_edgelist.r) 
 #         siteClusters_latlong.csv 
+#         monitoring-effort.RData (see adding-monitoring-effort.r)
 # Outputs: fig_network.png
 #          aggregate_transitions_<season>.csv
 #          aggregate_visits_<season>.csv
 # ----
-# Ian Durbach and Theoni Photopoulou 20170601
+# Ian Durbach and Theoni Photopoulou 20171109
 
+#library(tidyverse)
 library(ggplot2)
 library(ggmap)
 library(plyr)
@@ -16,15 +18,13 @@ library(dplyr)
 library(forcats)
 library(gridExtra)
 
-setwd("/Users/iandurbach/Documents/Research/161208_AlisonMEPS/")
-
 ############################
 ## spring/summer
 ############################
 
 seas = "springsummer"
 
-receiver.location.all = read.csv("siteClusters_latlong.csv")[,-1]
+receiver.location.all = read.csv("data/siteClusters_latlong.csv")[,-1]
 
 receiver.location = filter(receiver.location.all,!(sitecode == "NOTFB"|sitecode=="NH"))
 receiver.location = droplevels(receiver.location)
@@ -33,11 +33,31 @@ receiver.location$Latitude = ifelse(receiver.location$Latitude > 0,
                                     -receiver.location$Latitude, 
                                     receiver.location$Latitude)
 
-rec_ee = read.csv(paste("/Users/iandurbach/Documents/Research/161208_AlisonMEPS/receiver_edgelist_",seas,".csv",sep=""))[,-1]
+rec_ee = read.csv(paste("site_connectivity/output/receiver_edgelist_",seas,".csv",sep=""))[,-1]
 
-allfactorlevels = c(levels(rec_ee$prevsite),levels(rec_ee$sitecode))
+# include monitoring effort for spring summer
+load("site_connectivity/output/monitoring-effort.RData")
+site_effort <- site_effort %>% filter(aut_wint == FALSE) %>% select(-aut_wint)
+
+# make sure all site factor variables have the same levels, bit of a hack
+rec_ee$prevsite <- as.factor(rec_ee$prevsite)
+rec_ee$sitecode <- as.factor(rec_ee$sitecode)
+site_effort$Site.Code <- as.factor(site_effort$Site.Code)
+
+allfactorlevels = unique(c(levels(rec_ee$prevsite),
+                    levels(rec_ee$sitecode),
+                    levels(site_effort$Site.Code)))
 rec_ee$prevsite = factor(rec_ee$prevsite,levels=allfactorlevels)
 rec_ee$sitecode = factor(rec_ee$sitecode,levels=allfactorlevels)
+site_effort$Site.Code = factor(site_effort$Site.Code,levels=allfactorlevels)
+
+# adding the effort variable
+rec_ee <- rec_ee %>% 
+  left_join(site_effort, by = c("prevsite" = "Site.Code")) %>% 
+  dplyr::rename(prevsite_effort = effort) %>%
+  left_join(site_effort, by = c("sitecode" = "Site.Code")) %>% 
+  dplyr::rename(sitecode_effort = effort) %>%
+  mutate(min_effort = pmin(prevsite_effort, sitecode_effort))
 
 # group sites
 rec_ee$prevsite = rec_ee$prevsite %>% fct_collapse(FH = c("FHNI","FHNO","FHSI","FHSO"), # North shore
@@ -132,14 +152,14 @@ head(rec_ee3)
 
 # colour scale for number of transitions
 cscale = scale_colour_gradientn(colors=terrain.colors(10)[10:1], 
-                                breaks = c(0.15,1.5,15,150), 
-                                limits = c(0.03,160),
+                                breaks = 2 * c(0.15,1.5,15,150), 
+                                limits = 2 * c(0.03,160),
                                 trans="log10",
                                 name = "Transitions")
 
 # size scale for number of visits
-sscale = scale_size_area(breaks = c(50,100,150,200), 
-                                limits = c(1,200),
+sscale = scale_size_area(breaks = 2 * c(50,100,150,200), 
+                                limits = c(1,400),
                                 name = "Total visits")
 
 ## add in total number of visits to each site
@@ -176,11 +196,8 @@ fig_ss <- qmplot(Longitude, Latitude, data = receiver.location.all, geom="blank"
   geom_text(data = rec_to_text, aes(x=Longitude,y=Latitude,label=prevsite),size=3.5) +
   annotate("text",x=18.38,y=-34.38,label="(a)~italic(Spring/Summer)",parse=TRUE)
 
-#ggsave(paste("FalseBay_",seas,".png",sep=""),width=8, height=6)
-#dev.off()
-
-write.csv(rec_ee3,paste("aggregate_transitions_",seas,".csv",sep=""))
-write.csv(receiver.location,paste("aggregate_visits_",seas,".csv",sep=""))
+write.csv(rec_ee3,paste("site_connectivity/output/aggregate_transitions_",seas,".csv",sep=""))
+write.csv(receiver.location,paste("site_connectivity/output/aggregate_visits_",seas,".csv",sep=""))
 
 ############################
 ## autumn/winter
@@ -188,7 +205,7 @@ write.csv(receiver.location,paste("aggregate_visits_",seas,".csv",sep=""))
 
 seas = "autumnwinter"
 
-receiver.location.all = read.csv("siteClusters_latlong.csv")[,-1]
+receiver.location.all = read.csv("data/siteClusters_latlong.csv")[,-1]
 
 receiver.location = filter(receiver.location.all,!(sitecode == "NOTFB"|sitecode=="NH"))
 receiver.location = droplevels(receiver.location)
@@ -197,12 +214,33 @@ receiver.location$Latitude = ifelse(receiver.location$Latitude > 0,
                                     -receiver.location$Latitude, 
                                     receiver.location$Latitude)
 
-rec_ee = read.csv(paste("/Users/iandurbach/Documents/Research/161208_AlisonMEPS/receiver_edgelist_",seas,".csv",sep=""))[,-1]
+rec_ee = read.csv(paste("site_connectivity/output/receiver_edgelist_",seas,".csv",sep=""))[,-1]
 
-allfactorlevels = c(levels(rec_ee$prevsite),levels(rec_ee$sitecode))
+# include monitoring effort for autumn winter
+load("site_connectivity/output/monitoring-effort.RData")
+site_effort <- site_effort %>% filter(aut_wint == TRUE) %>% select(-aut_wint)
+
+# make sure all site factor variables have the same levels, bit of a hack
+rec_ee$prevsite <- as.factor(rec_ee$prevsite)
+rec_ee$sitecode <- as.factor(rec_ee$sitecode)
+site_effort$Site.Code <- as.factor(site_effort$Site.Code)
+
+allfactorlevels = unique(c(levels(rec_ee$prevsite),
+                           levels(rec_ee$sitecode),
+                           levels(site_effort$Site.Code)))
 rec_ee$prevsite = factor(rec_ee$prevsite,levels=allfactorlevels)
 rec_ee$sitecode = factor(rec_ee$sitecode,levels=allfactorlevels)
+site_effort$Site.Code = factor(site_effort$Site.Code,levels=allfactorlevels)
 
+# adding the effort variable
+rec_ee <- rec_ee %>% 
+  left_join(site_effort, by = c("prevsite" = "Site.Code")) %>% 
+  dplyr::rename(prevsite_effort = effort) %>%
+  left_join(site_effort, by = c("sitecode" = "Site.Code")) %>% 
+  dplyr::rename(sitecode_effort = effort) %>%
+  mutate(min_effort = pmin(prevsite_effort, sitecode_effort))
+
+# group sites
 rec_ee$prevsite = rec_ee$prevsite %>% fct_collapse(FH = c("FHNI","FHNO","FHSI","FHSO"), # North shore
                                                    KLB = c("KLBI","KLBO","MBC"), 
                                                    MI = c("MO", "MI","MIA","MIB"),
@@ -291,13 +329,13 @@ head(rec_ee3)
 #map = get_googlemap(center = c(lon = 18, lat = -34), zoom = 8)
 
 cscale = scale_colour_gradientn(colors=terrain.colors(10)[10:1], 
-                                breaks = c(0.15,1.5,15,150), 
-                                limits = c(0.03,160),
+                                breaks = 2 * c(0.15,1.5,15,150), 
+                                limits = 2 * c(0.03,160),
                                 trans="log10",
                                 name = "Transitions")
 
-sscale = scale_size_area(breaks = c(50,100,150,200), 
-                         limits = c(1,200),
+sscale = scale_size_area(breaks = 2 * c(50,100,150,200), 
+                         limits = c(1,400),
                          name = "Total visits")
 
 # directed graph
@@ -348,7 +386,8 @@ fig_aw <- qmplot(Longitude, Latitude, data = receiver.location.all, geom="blank"
   geom_text(data = rec_to_text, aes(x=Longitude,y=Latitude,label=prevsite),size=3.5) +
   annotate("text",x=18.38,y=-34.38,label="(b)~italic(Autumn/Winter)",parse=TRUE)
 
-write.csv(rec_ee3,paste("aggregate_transitions_",seas,".csv",sep=""))
-write.csv(receiver.location,paste("aggregate_visits_",seas,".csv",sep=""))
+write.csv(rec_ee3,paste("site_connectivity/output/aggregate_transitions_",seas,".csv",sep=""))
+write.csv(receiver.location,paste("site_connectivity/output/aggregate_visits_",seas,".csv",sep=""))
 
-ggsave("fig_network.png", arrangeGrob(fig_ss, fig_aw,ncol=1),width=8,height=12,dpi=200)
+ggsave("site_connectivity/output/fig_network.png", 
+       arrangeGrob(fig_ss, fig_aw,ncol=1), width=8, height=12, dpi=300)
